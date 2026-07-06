@@ -1,0 +1,72 @@
+# Build + deploy the three Cloud Run services.
+# Run from the repo root:  gcloud builds submit --config infra/cloudbuild.yaml .
+substitutions:
+  _REGION: us-central1
+  _REPO: chn
+
+steps:
+  # ---- build images -------------------------------------------------------
+  - id: build-agent
+    name: gcr.io/cloud-builders/docker
+    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA",
+           -f, services/agent/Dockerfile, .]
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA",
+           -f, services/api/Dockerfile, .]
+  - id: build-worker
+    name: gcr.io/cloud-builders/docker
+    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA",
+           -f, services/worker/Dockerfile, .]
+
+  # ---- push ----------------------------------------------------------------
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA
+        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA
+        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA
+
+  # ---- deploy (agent first — API needs its URL) ----------------------------
+  - id: deploy-agent
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args: [run, deploy, chn-agent,
+           --image, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA",
+           --region, "${_REGION}",
+           --service-account, "chn-agent@$PROJECT_ID.iam.gserviceaccount.com",
+           --allow-unauthenticated,   # MVP: lock down with IAM invoker in production (§14)
+           --memory, 1Gi, --timeout, "300",
+           --set-env-vars, "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_LOCATION=${_REGION}"]
+
+  - id: deploy-worker
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args: [run, deploy, chn-worker,
+           --image, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA",
+           --region, "${_REGION}",
+           --service-account, "chn-worker@$PROJECT_ID.iam.gserviceaccount.com",
+           --no-allow-unauthenticated,
+           --set-env-vars, "GOOGLE_CLOUD_PROJECT=$PROJECT_ID"]
+
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        AGENT_URL=$(gcloud run services describe chn-agent --region ${_REGION} --format='value(status.url)')
+        gcloud run deploy chn-api \
+          --image ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA \
+          --region ${_REGION} \
+          --service-account chn-api@$PROJECT_ID.iam.gserviceaccount.com \
+          --allow-unauthenticated \
+          --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,AGENT_URL=$AGENT_URL,UPLOAD_BUCKET=$PROJECT_ID-health-uploads,AUTH_MODE=demo"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA"

@@ -1,0 +1,11 @@
+google-adk>=1.0,<2
+google-genai>=1.0
+google-cloud-bigquery>=3.25
+google-cloud-discoveryengine>=0.13
+google-cloud-firestore>=2.16
+google-cloud-pubsub>=2.21
+fastapi>=0.111
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pyyaml>=6.0
+sqlglot>=25.0

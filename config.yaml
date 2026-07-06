@@ -1,0 +1,25 @@
+# Single config for all services. Override project_id via GOOGLE_CLOUD_PROJECT env.
+project_id: ""            # set via env in Cloud Run; leave blank here
+region: us-central1
+
+models:
+  router: gemini-2.5-flash      # routing, RAG synthesis, forecast/action narration
+  analytics: gemini-2.5-pro     # NL->SQL only (hardest reasoning task)
+
+bigquery:
+  dataset: community_health
+  max_bytes_billed: 1073741824  # 1 GB per-query hard cap
+  row_limit: 200
+
+rag:
+  datastore_id: health-knowledge
+  top_k: 8
+
+topics:
+  action_intents: action-intents
+  alert_events: alert-events
+
+limits:
+  max_turn_tokens: 4096
+  sql_retry_attempts: 2
+  tool_timeout_s: 30

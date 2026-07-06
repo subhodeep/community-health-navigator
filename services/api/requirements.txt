@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+httpx
+google-cloud-firestore
+google-cloud-storage
+firebase-admin
+pydantic
+pyyaml
