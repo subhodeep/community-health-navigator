@@ -64,7 +64,7 @@ steps:
           --region ${_REGION} \
           --service-account chn-api@$PROJECT_ID.iam.gserviceaccount.com \
           --allow-unauthenticated \
-          --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,AGENT_URL=$AGENT_URL,UPLOAD_BUCKET=$PROJECT_ID-health-uploads,AUTH_MODE=demo"
+          --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,AGENT_URL=$$AGENT_URL,UPLOAD_BUCKET=$PROJECT_ID-health-uploads,AUTH_MODE=demo"
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA"
