@@ -81,6 +81,18 @@ gcloud functions deploy anomaly-scan --gen2 --region=$REGION --runtime=python312
   --no-allow-unauthenticated --service-account=$FN_SA --timeout=300s \
   --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID,ALERT_TOPIC=alert-events
 
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$FN_SA" \
+    --role="roles/eventarc.eventReceiver"
+	
+gcloud projects add-iam-policy-binding $PROJECT_ID  \
+    --member="serviceAccount:$FN_SA" \
+    --role="roles/pubsub.publisher"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$FN_SA" \
+    --role="roles/eventarc.serviceAgent"
+
 # GCS-triggered reindex (fires whenever a doc is added/updated under docs/)
 gcloud functions deploy reindex-docs --gen2 --region=$REGION --runtime=python312 \
   --source=functions/reindex_docs --entry-point=reindex \
