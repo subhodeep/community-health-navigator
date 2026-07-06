@@ -3,20 +3,21 @@
 substitutions:
   _REGION: us-central1
   _REPO: chn
+  _SHORT_SHA: latest
 
 steps:
   # ---- build images -------------------------------------------------------
   - id: build-agent
     name: gcr.io/cloud-builders/docker
-    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA",
+    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:${_SHORT_SHA}",
            -f, services/agent/Dockerfile, .]
   - id: build-api
     name: gcr.io/cloud-builders/docker
-    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA",
+    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:${_SHORT_SHA}",
            -f, services/api/Dockerfile, .]
   - id: build-worker
     name: gcr.io/cloud-builders/docker
-    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA",
+    args: [build, -t, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:${_SHORT_SHA}",
            -f, services/worker/Dockerfile, .]
 
   # ---- push ----------------------------------------------------------------
@@ -26,16 +27,16 @@ steps:
     args:
       - -c
       - |
-        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA
-        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA
-        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA
+        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:${_SHORT_SHA}
+        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:${_SHORT_SHA}
+        docker push ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:${_SHORT_SHA}
 
   # ---- deploy (agent first — API needs its URL) ----------------------------
   - id: deploy-agent
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args: [run, deploy, chn-agent,
-           --image, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA",
+           --image, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:${_SHORT_SHA}",
            --region, "${_REGION}",
            --service-account, "chn-agent@$PROJECT_ID.iam.gserviceaccount.com",
            --allow-unauthenticated,   # MVP: lock down with IAM invoker in production (§14)
@@ -46,7 +47,7 @@ steps:
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args: [run, deploy, chn-worker,
-           --image, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA",
+           --image, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:${_SHORT_SHA}",
            --region, "${_REGION}",
            --service-account, "chn-worker@$PROJECT_ID.iam.gserviceaccount.com",
            --no-allow-unauthenticated,
@@ -60,13 +61,13 @@ steps:
       - |
         AGENT_URL=$(gcloud run services describe chn-agent --region ${_REGION} --format='value(status.url)')
         gcloud run deploy chn-api \
-          --image ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA \
+          --image ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:${_SHORT_SHA} \
           --region ${_REGION} \
           --service-account chn-api@$PROJECT_ID.iam.gserviceaccount.com \
           --allow-unauthenticated \
           --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,AGENT_URL=$$AGENT_URL,UPLOAD_BUCKET=$PROJECT_ID-health-uploads,AUTH_MODE=demo"
 
 images:
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:$SHORT_SHA"
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:$SHORT_SHA"
-  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:$SHORT_SHA"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/agent:${_SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/api:${_SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/worker:${_SHORT_SHA}"
