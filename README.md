@@ -2,7 +2,7 @@
 
 AI-powered Decision Intelligence Platform for healthcare access and community wellness, built on Google Cloud (ADK + Gemini).
 
-- **Architecture:** see [`../architecture.md`](../architecture.md)
+- **Architecture:** see [`architecture.md`](architecture.md)
 - **Deployment:** see [`DEPLOYMENT.md`](DEPLOYMENT.md)
 
 ## Layout
